@@ -247,6 +247,130 @@ EOL
     source "$HOME/.bashrc" || true
 }
 
+install_slack() {
+    log "Installing Slack..."
+    if command -v slack >/dev/null; then
+        log "Slack is already installed"
+        return
+    fi
+
+    # Ensure the keyrings directory exists
+    sudo mkdir -p /etc/apt/keyrings
+    
+    # Add Slack repository
+    if [ ! -f /etc/apt/keyrings/slacktechnologies_slack-archive-keyring.gpg ]; then
+        log "Adding Slack repository key..."
+        curl -fsSL https://packagecloud.io/slacktechnologies/slack/gpgkey | \
+            sudo gpg --dearmor -o /etc/apt/keyrings/slacktechnologies_slack-archive-keyring.gpg || \
+            error "Failed to add Slack repository key"
+
+        log "Adding Slack repository..."
+        echo "deb [signed-by=/etc/apt/keyrings/slacktechnologies_slack-archive-keyring.gpg] https://packagecloud.io/slacktechnologies/slack/debian jessie main" | \
+            sudo tee /etc/apt/sources.list.d/slack.list > /dev/null
+            
+        sudo apt-get update || error "Failed to update package list"
+    fi
+    
+    # Install Slack
+    install_package slack-desktop
+    
+    # Verify installation
+    if command -v slack >/dev/null; then
+        log "Slack installed successfully"
+    else
+        error "Slack installation failed"
+    fi
+}
+
+install_thunderbird() {
+    log "Installing Thunderbird..."
+    if command -v thunderbird >/dev/null; then
+        log "Thunderbird is already installed"
+        return
+    fi
+
+    # Install Thunderbird
+    install_package thunderbird
+    
+    # Verify installation
+    if command -v thunderbird >/dev/null; then
+        log "Thunderbird installed successfully"
+    else
+        error "Thunderbird installation failed"
+    fi
+}
+
+install_nvm() {
+    log "Installing nvm and Node.js..."
+    
+    # Check if nvm is already installed
+    if [ -d "$HOME/.nvm" ]; then
+        log "nvm is already installed"
+        return
+    fi
+
+    # Install nvm
+    log "Downloading and installing nvm..."
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/master/install.sh | bash || error "Failed to install nvm"
+    
+    # Load nvm for current session
+    export NVM_DIR="$HOME/.nvm"
+    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+    
+    # Verify nvm installation
+    if ! command -v nvm >/dev/null; then
+        error "nvm installation failed or not properly loaded"
+    fi
+
+    # Install latest Node.js version
+    log "Installing latest Node.js version..."
+    nvm install node || error "Failed to install Node.js"
+    nvm use node || error "Failed to use latest Node.js version"
+    
+    # Install common global packages
+    log "Installing common global npm packages..."
+    npm install -g npm@latest || warn "Failed to update npm"
+    
+    # Verify installation
+    log "Node.js $(node --version) installed"
+    log "npm $(npm --version) installed"
+}
+
+install_pgadmin() {
+    log "Installing pgAdmin4..."
+    if dpkg-query -W -f='${Status}' pgadmin4 2>/dev/null | grep -q "install ok installed"; then
+        log "pgAdmin4 is already installed"
+        return
+    fi
+
+    # Ensure the keyrings directory exists
+    sudo mkdir -p /etc/apt/keyrings
+    
+    # Add pgAdmin repository key
+    if [ ! -f /etc/apt/keyrings/pgadmin4.gpg ]; then
+        log "Adding pgAdmin repository key..."
+        curl -fsS https://www.pgadmin.org/static/packages_pgadmin_org.pub | \
+            sudo gpg --dearmor -o /etc/apt/keyrings/pgadmin4.gpg || \
+            error "Failed to add pgAdmin repository key"
+
+        # Add pgAdmin repository
+        echo "deb [signed-by=/etc/apt/keyrings/pgadmin4.gpg] https://ftp.postgresql.org/pub/pgadmin/pgadmin4/apt/$(lsb_release -cs) pgadmin4 main" | \
+            sudo tee /etc/apt/sources.list.d/pgadmin4.list > /dev/null
+
+        sudo apt-get update || error "Failed to update package list"
+    fi
+
+    # Install pgAdmin4
+    install_package pgadmin4-desktop
+
+    # Verify installation
+    if dpkg-query -W -f='${Status}' pgadmin4-desktop 2>/dev/null | grep -q "install ok installed"; then
+        log "pgAdmin4 installed successfully"
+    else
+        error "pgAdmin4 installation failed"
+    fi
+}
+
 main() {
     # System update
     log "Updating system packages..."
@@ -259,8 +383,12 @@ main() {
     # Install applications
     install_deb_package "https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb" "google-chrome-stable"
     setup_bashrc_additions
+    install_thunderbird
+    install_slack
     install_docker
     install_rbenv
+    install_nvm
+    install_pgadmin
     
     log "Installation completed successfully!"
     log "Please restart your session for all changes to take effect."

@@ -2,4 +2,4 @@
 
 Installation
 
-`curl -fsSL https://raw.githubusercontent.com/dandush03/debian_setup/main/script.sh | bash`
+`curl -fsSL https://raw.githubusercontent.com/Dandush03/debian_setup/refs/heads/main/script.sh | bash`
